@@ -54,7 +54,6 @@ obs: above, the switch -s changes spatial reference from SIRGAS2000(SRID=4674)  
 ###Importing CNEFE data:
 
 Downloading the data:
-
 ```
 mkdir ~/osm_cnefe_import/CNEFE
 cd ~/osm_cnefe_import/CNEFE
@@ -62,8 +61,26 @@ wget -r -nd ftp://ftp.ibge.gov.br/Censos/Censo_Demografico_2010/Cadastro_Naciona
 ```
 obs: downloading will take some time, there are 10904 files  totaling 926Mb 
 
+Creating an import file with one copy command perCNEFE file. 
+
+```
+(for FILE in ./.txt; do echo "COPY table FROM '$FILE' WITH DELIMINER AS '|';"; done) > import-commands.sql
+```
+From within IPEA run the code bellow:
+# cd ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped
+(for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.txt; do echo "COPY table  FROM '$FILE' WITH DELIMINER AS '|';"; done) > import-commands.sql
+
+
+CREATE TABLE cnefe_staging (data text);
+
+
+
+
+
+
 
 ###Importing OSM data:
+I use the [Brasil OSM file produced by Geofabrik](http://download.geofabrik.de/south-america/brazil.html)
 
 Downloading the data:
 ```
