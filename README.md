@@ -67,12 +67,15 @@ Creating an import file with one copy command perCNEFE file.
 (for FILE in ./.txt; do echo "COPY table FROM '$FILE' WITH DELIMINER AS '|';"; done) > import-commands.sql
 ```
 From within IPEA run the code bellow:
-# cd ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped
+```
 (for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.txt; do echo "COPY table  FROM '$FILE' WITH DELIMINER AS '|';"; done) > import-commands.sql
-
-
+```
+On PSQL  run:
+```
 CREATE TABLE cnefe_staging (data text);
 
+
+```
 
 
 
