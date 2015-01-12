@@ -61,6 +61,19 @@ wget -r -nd ftp://ftp.ibge.gov.br/Censos/Censo_Demografico_2010/Cadastro_Naciona
 ```
 obs: downloading will take some time, there are 10904 files  totaling 926Mb 
 
+Now we can follow two strategies:
+
+#### Importing with pgloader 
+
+haven't tryed yet, could not find a tutorial including pgloader in a multiple files to one table setting. 
+
+#### Importing with psql \copy command
+
+This is based on [this sugestion](http://www.postgresonline.com/journal/archives/157-Import-fixed-width-data-into-PostgreSQL-with-just-psql.html) to use only psql \copy command, import as a text blob to a staging table in Postgres and parse the content of each colum in Postgres.  To deal with the several files to be imported I'm using the suggestion in [this StackOverflow quetion](http://stackoverflow.com/questions/12646305/efficient-way-to-import-a-lot-of-csv-files-into-postgresql-db), of creating a creating an import file with one copy command perCNEFE file. 
+
+This may also be usefull (depois tirar): http://postgresql.nabble.com/Multiple-COPY-statements-td5701101.html
+
+
 Creating an import file with one copy command perCNEFE file. 
 
 ```
