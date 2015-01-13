@@ -81,13 +81,8 @@ Creating an import file with one copy command perCNEFE file.
 
 ```
 (for FILE in ./*.TXT; do echo "\COPY cnefe_staging FROM '$FILE'"; done) > temp_CNEFE_import-commands.sql
-(for FILE in ./*.TXT; do echo "\COPY cnefe_staging FROM '$FILE' WITH DELIMITER AS '|';"; done) > temp_CNEFE_import-commands.sql
 ```
-From within IPEA run the code bellow:
-```
-(for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "\COPY cnefe_staging  FROM '$FILE';"; done) > temp_CNEFE_import-commands.sql
-(for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "\COPY cnefe_staging  FROM '$FILE' WITH DELIMITER AS '|';"; done) > temp_CNEFE_import-commands.sql
-```
+
 Correcting Encoding:
 when importing the oringinal unzipped files into Postgres I encountered encoding problems ("psql:temp_CNEFE_import-commands.sql:1: ERROR:  invalid byte sequence for encoding "UTF8": 0xe9 0x63 0x69
 CONTEXT:  COPY cnefe_staging, line 452"  similar for command 6, line 6538). I solved this with the 'recode' package:
@@ -98,7 +93,6 @@ recode iso-8859-1..utf8 *.TXT
 
 Importing to a table in Postgres
 ```
-psql -d osm_cnefe_import  -c 'set client_encoding = 'latin1';'
 psql -d osm_cnefe_import  -c 'DROP TABLE cnefe_staging';
 psql -d osm_cnefe_import  -c 'CREATE TABLE cnefe_staging (data text)'
 psql -d osm_cnefe_import  -f temp_CNEFE_import-commands.sql
