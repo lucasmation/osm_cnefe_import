@@ -7,6 +7,8 @@ Datasets and the project are described at this OSM Wiki:
 
 http://wiki.openstreetmap.org/wiki/CNEFE_data,_IBGE,_Brasil_import
 
+Commands bellow are to be run for a Linux Terminal
+
 ###Preparing the machine 
 
 Install Postgresql and PostGIS flowing this totorial: http://switch2osm.org/loading-osm-data/
@@ -85,12 +87,10 @@ From within IPEA run the code bellow:
 (for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "COPY table  FROM '$FILE' WITH DELIMINER AS '|';"; done) > temp_CNEFE_import-commands.sql
 ```
 
-On PSQL  run:
+Importing to a table in Postgres
 ```
 psql -d osm_cnefe_import  -c CREATE TABLE cnefe_staging (data text);
 psql -d osm_cnefe_import  -f temp_CNEFE_import-commands.sql
-
-
 ```
 
 
