@@ -80,11 +80,13 @@ This may also be usefull (depois tirar): http://postgresql.nabble.com/Multiple-C
 Creating an import file with one copy command perCNEFE file. 
 
 ```
-(for FILE in ./*.TXT; do echo "COPY table FROM '$FILE' WITH DELIMINER AS '|';"; done) > temp_CNEFE_import-commands.sql
+(for FILE in ./*.TXT; do echo "\COPY table FROM '$FILE'"; done) > temp_CNEFE_import-commands.sql
+(for FILE in ./*.TXT; do echo "\COPY table FROM '$FILE' WITH DELIMITER AS '|';"; done) > temp_CNEFE_import-commands.sql
 ```
 From within IPEA run the code bellow:
 ```
-(for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "COPY table  FROM '$FILE' WITH DELIMINER AS '|';"; done) > temp_CNEFE_import-commands.sql
+(for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "\COPY table  FROM '$FILE';"; done) > temp_CNEFE_import-commands.sql
+(for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "\COPY table  FROM '$FILE' WITH DELIMITER AS '|';"; done) > temp_CNEFE_import-commands.sql
 ```
 
 Importing to a table in Postgres
