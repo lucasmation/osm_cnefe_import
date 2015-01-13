@@ -88,6 +88,13 @@ From within IPEA run the code bellow:
 (for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "\COPY cnefe_staging  FROM '$FILE';"; done) > temp_CNEFE_import-commands.sql
 (for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "\COPY cnefe_staging  FROM '$FILE' WITH DELIMITER AS '|';"; done) > temp_CNEFE_import-commands.sql
 ```
+Correcting Encoding:
+when importing the oringinal unzipped files into Postgres I encountered encoding problems ("psql:temp_CNEFE_import-commands.sql:1: ERROR:  invalid byte sequence for encoding "UTF8": 0xe9 0x63 0x69
+CONTEXT:  COPY cnefe_staging, line 452"  similar for command 6, line 6538). I solved this with the 'recode' package:
+```
+sudo apt-get install recode
+recode iso-8859-1..utf8 *.TXT
+```
 
 Importing to a table in Postgres
 ```
@@ -96,13 +103,17 @@ psql -d osm_cnefe_import  -c 'DROP TABLE cnefe_staging';
 psql -d osm_cnefe_import  -c 'CREATE TABLE cnefe_staging (data text)'
 psql -d osm_cnefe_import  -f temp_CNEFE_import-commands.sql
 ```
-above sort of works but I'm getting error: 
 
-psql:temp_CNEFE_import-commands.sql:1: ERROR:  invalid byte sequence for encoding "UTF8": 0xe9 0x63 0x69
-CONTEXT:  COPY cnefe_staging, line 452
+Separating fields
+```
+psql -d osm_cnefe_import  -f create_cnefe_unnormalized.sql
+```
+osb: see the create_cnefe_unnormalized.sql in this gihub repo. 
+Table is created but I get an error:
+"CREATE TABLE
+psql:create_cnefe_unnormalized.sql:84: ERROR:  invalid input syntax for integer: "     
 
-psql:temp_CNEFE_import-commands.sql:6: ERROR:  invalid byte sequence for encoding "UTF8": 0xe9 0x63 0x69
-CONTEXT:  COPY cnefe_staging, line 6538
+nada é adicionado à tabela
 
 next tings to do: 
 
