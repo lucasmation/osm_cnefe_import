@@ -91,7 +91,9 @@ From within IPEA run the code bellow:
 
 Importing to a table in Postgres
 ```
-psql -d osm_cnefe_import  -c CREATE TABLE cnefe_staging (data text);
+psql -d osm_cnefe_import  -c 'set client_encoding = 'latin1';'
+psql -d osm_cnefe_import  -c 'DROP TABLE cnefe_staging';
+psql -d osm_cnefe_import  -c 'CREATE TABLE cnefe_staging (data text)'
 psql -d osm_cnefe_import  -f temp_CNEFE_import-commands.sql
 ```
 obve sort of works but I'm getting error: 
