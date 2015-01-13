@@ -57,7 +57,8 @@ Downloading the data:
 ```
 mkdir ~/osm_cnefe_import/CNEFE
 cd ~/osm_cnefe_import/CNEFE
-wget -r -nd ftp://ftp.ibge.gov.br/Censos/Censo_Demografico_2010/Cadastro_Nacional_de_Enderecos_Fins_Estatisticos/
+wget -r -nd  --read-timeout=5 ftp://ftp.ibge.gov.br/Censos/Censo_Demografico_2010/Cadastro_Nacional_de_Enderecos_Fins_Estatisticos/
+unzip  '*.zip'
 ```
 obs: downloading will take some time, there are 10904 files  totaling 926Mb 
 
@@ -77,12 +78,13 @@ This may also be usefull (depois tirar): http://postgresql.nabble.com/Multiple-C
 Creating an import file with one copy command perCNEFE file. 
 
 ```
-(for FILE in ./.txt; do echo "COPY table FROM '$FILE' WITH DELIMINER AS '|';"; done) > import-commands.sql
+(for FILE in ./*.TXT; do echo "COPY table FROM '$FILE' WITH DELIMINER AS '|';"; done) > import-commands.sql
 ```
 From within IPEA run the code bellow:
 ```
-(for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.txt; do echo "COPY table  FROM '$FILE' WITH DELIMINER AS '|';"; done) > import-commands.sql
+(for FILE in ~/.gvfs/bases\ on\ storage1/CNEFE2010/Dados\ Originais/unzipped/*.TXT; do echo "COPY table  FROM '$FILE' WITH DELIMINER AS '|';"; done) > import-commands.sql
 ```
+
 On PSQL  run:
 ```
 CREATE TABLE cnefe_staging (data text);
