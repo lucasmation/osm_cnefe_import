@@ -96,16 +96,22 @@ psql -d osm_cnefe_import  -c 'DROP TABLE cnefe_staging';
 psql -d osm_cnefe_import  -c 'CREATE TABLE cnefe_staging (data text)'
 psql -d osm_cnefe_import  -f temp_CNEFE_import-commands.sql
 ```
-obve sort of works but I'm getting error: 
+above sort of works but I'm getting error: 
+
 psql:temp_CNEFE_import-commands.sql:1: ERROR:  invalid byte sequence for encoding "UTF8": 0xe9 0x63 0x69
 CONTEXT:  COPY cnefe_staging, line 452
+
 psql:temp_CNEFE_import-commands.sql:6: ERROR:  invalid byte sequence for encoding "UTF8": 0xe9 0x63 0x69
 CONTEXT:  COPY cnefe_staging, line 6538
 
 next tings to do: 
+
 create the CNEFE table, separating the fields from the stagging table
+
 add indexes
+
 normalize the CNEFE table into the tables: roads, enumeration districts, addresses, localidades
+
 add the geoms of the enumeration districts
 
 
