@@ -97,6 +97,19 @@ psql -d osm_cnefe_import  -c 'DROP TABLE cnefe_staging';
 psql -d osm_cnefe_import  -c 'CREATE TABLE cnefe_staging (data text)'
 psql -d osm_cnefe_import  -f temp_CNEFE_import-commands.sql
 ```
+about 70 milion rows (it should have 84 milion)
+
+
+Even with the above "recode" I'm still getting the the following encode errors:
+"
+psql:temp_CNEFE_import-commands.sql:8346: ERROR:  invalid byte sequence for encoding "UTF8": 0xc2 0x20
+CONTEXT:  COPY cnefe_staging, line 49070: "42 4202 5 0 1781TRAVESSA                                          TAILANDIA                         ..."
+psql:temp_CNEFE_import-commands.sql:9189: ERROR:  invalid byte sequence for encoding "UTF8": 0x94
+CONTEXT:  COPY cnefe_staging, line 1023: "43 9100 5 0   21AVENIDA                                           BORGES DE MEDEIROS                ..."
+psql:temp_CNEFE_import-commands.sql:10794: ERROR:  invalid byte sequence for encoding "UTF8": 0x00
+CONTEXT:  COPY cnefe_staging, line 10418: "5215702 5 0  391RUA                                               TREZE                             ..."
+"
+
 
 Separating fields
 ```
