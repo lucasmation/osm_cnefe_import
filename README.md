@@ -140,7 +140,7 @@ add the geoms of the enumeration districts
 
 
 
-###Importing OSM data:
+###Importing OSM Brasil data:
 I use the [Brasil OSM file produced by Geofabrik](http://download.geofabrik.de/south-america/brazil.html)
 
 Downloading the data:
@@ -149,3 +149,27 @@ mkdir ~/osm_cnefe_import/OSM_Brasil
 cd ~/osm_cnefe_import/OSM_Brasil
 wget -r -nd http://download.geofabrik.de/south-america/brazil-latest.osm.pbf
 ```
+
+Importing with osm2psql
+
+http://switch2osm.org/loading-osm-data/
+
+Importing with osmosis
+
+
+###Importing OSM Brasil History File:
+
+
+Following this tutorial:  https://github.com/MaZderMind/osm-history-renderer/blob/master/TUTORIAL.md
+
+Importing the data:
+```
+mkdir ~/osm_cnefe_import/OSM_Brasil/Brasil_history_file
+cd ~/osm_cnefe_import/OSM_Brasil/Brasil_history_file
+wget http://osm.personalwerk.de/full-history-extracts/latest/south-america/brazil.osh.pbf
+```
+
+Importing into postgres
+```
+```
+
