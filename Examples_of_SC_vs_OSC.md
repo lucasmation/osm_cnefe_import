@@ -38,4 +38,16 @@ REPRESENTATION in CNEFE:
 ![alt tag](SC_screenshots/SC_half_block_in_CNEFE.PNG)
 
 
-## Data description
+## Case 3: ED polygons are displocated 
+
+This exaple is from downtown Salvador
+
+![alt tag](SC_screenshots/SC_displocated_EDs_from_undelying_OSM-Streets_Salvador.PNG)
+
+Notice how the ED polygons are dislocated notheast from the undelying OSM-Streets (suposebly the "true" location).  
+A person at OSM-dev IRC suggested that the projection for the ED layer may be wrong. Maybe it could actualy be SAD69 (4618) instead of the recorded SIRGAS2000 (4674). I tryed to Update_GeometrySRID() but that did not work (as documented in [this gis.stackexchange question](http://gis.stackexchange.com/questions/154389/updating-srid-update-geometrysrid-does-not-alter-polygons-when-it-should))
+
+
+
+
+
