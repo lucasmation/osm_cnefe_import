@@ -31,7 +31,7 @@ REPRESENTATION in CNEFE:
 
 ED-polygos vs OSM-Streets:
 
-![alt tag](https://raw.githubusercontent.com/lucasmation/osm_cnefe_import/master/SC_screenshots/SC_half_block_example.PNG)
+![alt tag](SC_screenshots/SC_half_block_example.PNG)
 
 REPRESENTATION in CNEFE:
 
