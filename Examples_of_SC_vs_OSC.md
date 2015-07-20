@@ -19,11 +19,11 @@ Theese images are from the municipality of Sao Paulo -SP, where geometries of ED
 
 ED-polygos vs OSM-Streets:
 
-![alt tag](https://raw.githubusercontent.com/lucasmation/osm_cnefe_import/master/SC_screenshots/SC_multiple_blocks.PNG)
+![alt tag](SC_screenshots/SC_multiple_blocks.PNG)
 
 REPRESENTATION in CNEFE:
 
-![alt tag](https://raw.githubusercontent.com/lucasmation/osm_cnefe_import/master/SC_screenshots/SC_multiple_blocks_in_CNEFE.PNG)
+![alt tag](SC_screenshots/SC_multiple_blocks_in_CNEFE.PNG)
 
 
 
@@ -35,7 +35,7 @@ ED-polygos vs OSM-Streets:
 
 REPRESENTATION in CNEFE:
 
-![alt tag](https://raw.githubusercontent.com/lucasmation/osm_cnefe_import/master/SC_screenshots/SC_half_block_in_CNEFE.PNG)
+![alt tag](SC_screenshots/SC_half_block_in_CNEFE.PNG)
 
 
 ## Data description
