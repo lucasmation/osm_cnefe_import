@@ -160,4 +160,18 @@ wget http://osm.personalwerk.de/full-history-extracts/latest/south-america/brazi
 
 Importing into postgres
 ```
+...
 ```
+
+##Data sources summary
+
+* CNEFE data: ftp://ftp.ibge.gov.br/Censos/Censo_Demografico_2010/Cadastro_Nacional_de_Enderecos_Fins_Estatisticos
+
+* Setor sensitario: ftp://geoftp.ibge.gov.br/malhas_digitais/censo_2010/setores_censitarios/
+
+* [Brasil OSM file produced by Geofabrik](http://download.geofabrik.de/south-america/brazil.html):
+
+  * http://download.geofabrik.de/south-america/brazil-latest.osm.pbf.md5
+  * http://download.geofabrik.de/south-america/brazil-latest.osm.pbf
+  * http://osm.personalwerk.de/full-history-extracts/latest/south-america/brazil.osh.pbf
+
