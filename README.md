@@ -109,7 +109,20 @@ where ST_Intersects(OSM_blocks_Sao_Paulo.geom, OSM_streets_Sao_Paulo.way)=true a
 
 
 
-Now we replicate 1-4 this for every city in Brazil. 
+Now need to replicate 1-4 this for all of Brasil.
+
+
+TABLE time to run steps above (1 to 4) in Sao Paulo and all of Brazil
+
+query|Sao Paulo municipality|Sao Paulo min + spatial index |Brazil
+---|---|---|---
+N# of Street Segments|57.6mil|57.6mil|1751mil
+ST_Union|475s|517s|?
+ST_Dump(ST_Polygonize)|46s|42s|?
+ST_Intersects()|611s|204s|?
+
+
+All of OBS-Brazil is 30x larger than OSM-Sao Paulo
 
 
 ### Maching CNEFE and OSM city bocks
