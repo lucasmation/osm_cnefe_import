@@ -50,6 +50,21 @@ CNEFE_block_street_relation_Sao_Paulo
 
 To create city blocks from OSM we use the following algorithm, inspired by [this post](http://gis.stackexchange.com/questions/80498/how-to-transform-a-set-of-street-segments-into-city-blocks-with-postgis2):
 
+0) Auxiliary functions
+
+``` sql 
+CREATE OR REPLACE FUNCTION retira_acentuacao(p_texto text)  
+  RETURNS text AS  
+  $BODY$  
+  Select translate($1,  
+  'áàâãäåaaaÁÂÃÄÅAAAÀéèêëeeeeeEEEÉEEÈìíîïìiiiÌÍÎÏÌIIIóôõöoooòÒÓÔÕÖOOOùúûüuuuuÙÚÛÜUUUUçÇñÑýÝ',
+  'aaaaaaaaaAAAAAAAAAeeeeeeeeeEEEEEEEiiiiiiiiIIIIIIIIooooooooOOOOOOOOuuuuuuuuUUUUUUUUcCnNyY'
+  );  
+  $BODY$  
+LANGUAGE sql VOLATILE  
+COST 100; 
+```
+
 1) select only streets in OSM
 ``` sql 
 CREATE TABLE OSM_streets AS
@@ -125,14 +140,17 @@ CREATE INDEX OSM_block_street_relation_index ON OSM_block_street_relation USING 
 5) Create OSM_Block with streetname array
 
 ``` sql
-CREATE TABLE OSM_blocks
-SELECT cod_mun, path, geom, geom2, 
-	count(x) AS No_seg
-	count(name) AS No_names
-	count(distinct name) AS No_unique_names
-	array_agg(osm_id ORDER BY name) AS osm_name_array
-	array_agg(name ORDER BY name) AS osm_name_array;
-CREATE INDEX OSM_blocks_index ON OSM_blocks USING gist(geom);
+REATE TABLE OSM_blocks AS
+SELECT 	cod_mun, path, geom, geom2, 
+	count(*) AS No_seg,
+	count(name) AS No_names,
+	count(distinct name) AS No_unique_names,
+	array_agg(osm_id ORDER BY name) AS osm_id_array,
+	array_agg(name ORDER BY name) AS osm_name_array,
+	array_agg(upper(retira_acentuacao(name)) ORDER BY name) AS osm_name_semAcento_array
+FROM OSM_block_street_relation
+GROUP BY cod_mun, path, geom, geom2;	
+CREATE INDEX OSM_blocks_index ON OSM_blocks USING gist(geom);;
 ```
 
 
