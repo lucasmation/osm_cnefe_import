@@ -51,7 +51,10 @@ CREATE TABLE OSM_Streets_by_Mun AS
 SELECT cod_uf, cod_mun, OSM_Streets.*
 FROM OSM_Streets, UFs_Brasil, municipios_Brasil
 WHERE ST_Intersects(way,UFs_Brasil.geom) AND ST_Intersects(way,municipios_Brasil.geom);
-CREATE INDEX OSM_Streets_by_Mun_index ON OSM_Streets_by_Mun USING gist  (way);
+
+CREATE INDEX OSM_Streets_by_Mun_index  ON OSM_Streets_by_Mun USING gist  (way);
+CREATE INDEX OSM_Streets_by_Mun_index2 ON OSM_Streets_by_Mun USING gist  (cod_mun);
+CREATE INDEX OSM_Streets_by_Mun_index3 ON OSM_Streets_by_Mun USING gist  (cod_mun,way);
 CLUSTER OSM_Streets_by_Mun using OSM_Streets_by_Mun_index;
 
 --This is important to reduce the dimensionality of subsequent queries, constructing blocks only within municipality. OBS:Minor problem: This will lead to problems with blocks that cross municipall borders, which can occur in conurbated municipalities 
