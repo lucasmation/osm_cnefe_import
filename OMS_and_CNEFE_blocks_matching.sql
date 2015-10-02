@@ -34,6 +34,7 @@ WHERE
     highway='track' or 
     highway='trunk' or highway='unclassified' or route='road');
 CREATE INDEX OSM_streets_index ON OSM_streets USING gist  (way);
+CLUSTER OSM_Streets using OSM_Streets_index;
 
 /* Here selection the createria to select roads, or other line types that define bocks could be refined. An alternative could be
     line.highway NOT IN ('construction', 'footway', 'path', 'steps', 'track', 'cycleway', 'pedestrian', 'abandoned',
@@ -43,15 +44,62 @@ Let me know if you have a more precise way to identify streets.
 */
 
 
---2) match OSM_streets to the IBGE state and municipality layer
+--2) match OSM_streets to the IBGE state and municipality and Enumeration districs (setor censitario) layers
 
+--2a) municipality match
 CREATE TABLE OSM_Streets_by_Mun AS
 SELECT cod_uf, cod_mun, OSM_Streets.*
 FROM OSM_Streets, UFs_Brasil, municipios_Brasil
 WHERE ST_Intersects(way,UFs_Brasil.geom) AND ST_Intersects(way,municipios_Brasil.geom);
 CREATE INDEX OSM_Streets_by_Mun_index ON OSM_Streets_by_Mun USING gist  (way);
+CLUSTER OSM_Streets_by_Mun using OSM_Streets_by_Mun_index;
 
 --This is important to reduce the dimensionality of subsequent queries, constructing blocks only within municipality. OBS:Minor problem: This will lead to problems with blocks that cross municipall borders, which can occur in conurbated municipalities 
+
+
+--2b) ED match
+CREATE TABLE OSM_Streets_by_SetorCensitario AS
+SELECT osm_id, cd_geocodi as cod_setor
+FROM OSM_Streets
+INNER JOIN 
+	(SELECT *, ST_Buffer(geom,0.005) as geom_buffed
+	FROM setor_censitarioL) AS foo
+ON ST_Intersects(way,geom_buffed)
+
+
+
+---- Find place for this.... 
+-- 4b) Enumeration district level
+
+CREATE TABLE OSM_Streets_by_SetorCensitario AS
+SELECT OSM_Streets_by_Mun.*, setor_censitarioL.geom
+FROM OSM_Streets_by_Mun, setor_censitarioL
+WHERE 	OSM_Streets_by_Mun.cod_UF= substring(setor_censitarioL.cd_geocodi,1,2)  AND
+	OSM_Streets_by_Mun.cod_mun= substring(setor_censitarioL.cd_geocodi,1,7)   AND
+	ST_Intersects(way,ST_Buffer(setor_censitarioL.geom,0.005))=true
+
+-- the above query never finishes, eventually chashin the server. 
+-- I asked a question about it here http://stackoverflow.com/questions/32907481/optimize-large-st-intersect-query-match-1-8m-osm-streets-to-317k-polygons
+
+-- Since it does not run with the 1.8 million streets  I tryed with the 480k fully named blocks I created in (OSM_blocks_fullyNamed). 
+-- Also, following previous sucgestoins I pre-compute a new geom with the buffer. 
+
+
+CREATE TABLE setor_censitarioL2 AS
+SELECT *, ST_Buffer(geom,0.005) as geom_buffed
+FROM setor_censitarioL
+
+
+CREATE TABLE OSM_Streets_by_SetorCensitario AS
+SELECT OSM_Streets_by_Mun.*, setor_censitarioL.geom
+FROM OSM_Streets_by_Mun, setor_censitarioL
+WHERE 	OSM_Streets_by_Mun.cod_UF= substring(setor_censitarioL.cd_geocodi,1,2)  AND
+	OSM_Streets_by_Mun.cod_mun= substring(setor_censitarioL.cd_geocodi,1,7)   AND
+	ST_Intersects(way,ST_Buffer(setor_censitarioL.geom,0.005))=true
+
+
+--------
+
 
 --3) Create OSM blocks for each municipality
 
@@ -74,8 +122,7 @@ FROM (SELECT cod_mun, ST_Dump(ST_Polygonize(geom)) AS blocks
       GROUP BY cod_mun) AS foo;
 CREATE INDEX temp_OSM_blocks_index ON temp_OSM_blocks USING gist(geom);
 
---4) Bring the OSM city names to OSM Blocks
-
+--4) Bring the OSM municipality and ED codes to to OSM Blocks
 --Find the intersection of created polygons with the original street dataset to recover the names of the streets that carachterize each city block.
 
 CREATE TABLE OSM_block_street_relation AS
@@ -88,10 +135,14 @@ WHERE   temp_OSM_blocks.cod_mun = OSM_streets_by_mun.cod_mun AND
 UPDATE OSM_block_street_relation SET name=trim(name);
 CREATE INDEX OSM_block_street_relation_index ON OSM_block_street_relation USING gist(geom);
 
+
+
+
+
 --5) Create OSM_Block with street name array
 
 CREATE TABLE OSM_blocks AS
-SELECT 	cod_mun, path, geom, geom2, 
+SELECT 	cod_mun, path, geom AS geom_osm_block, geom2 AS geom2_osm_block, 
 	count(*) AS No_seg,
 	count(name) AS No_names,
 	count(distinct name) AS No_unique_names,
@@ -99,8 +150,9 @@ SELECT 	cod_mun, path, geom, geom2,
 	array_agg(name ORDER BY upper(retira_acentuacao(name))) AS osm_name_array,
 	array_agg(upper(retira_acentuacao(name)) ORDER BY upper(retira_acentuacao(name))) AS osm_name_semAcento_array
 FROM OSM_block_street_relation
-GROUP BY cod_mun, path, geom, geom2;	
-CREATE INDEX OSM_blocks_index ON OSM_blocks USING gist(geom);
+GROUP BY cod_mun, path, geom_osm_block, geom2_osm_block;	
+CREATE INDEX OSM_blocks_index ON OSM_blocks USING gist(geom_osm_block);
+
 
 --6) Select only OSM-Blocks that ahve all streets named
 
@@ -133,6 +185,7 @@ FROM	cnefe2010.setor
 		ON cnefe2010.setor.idn_setor = cnefe2010.quadra.idn_setor
 	LEFT JOIN cnefe2010.face 
 		ON cnefe2010.quadra.idn_quadra = cnefe2010.face.idn_quadra 
+
 	LEFT JOIN cnefe2010.face_tem_logradouros 
 		ON cnefe2010.face.idn_face = cnefe2010.face_tem_logradouros.idn_face
 	LEFT JOIN cnefe2010.logradouro
@@ -161,6 +214,8 @@ FROM cnefe2010.aux_quadra
 GROUP BY cod_mun, idn_setor, cod_setor, idn_situacao_setor, dsc_situacao_setor, idn_quadra, num_quadra
 
 
+
+
 --------------------------------
 -- C) Matching OSM-Blocks (A) with CNEFE-Blocks (B) based on municipality and street names of each block. 
 
@@ -169,14 +224,22 @@ SELECT 	OSM_blocks_fullyNamed.cod_mun,
 	idn_setor, cod_setor, idn_situacao_setor, dsc_situacao_setor,
 	idn_quadra, 
 	no_faces, 
-	No_seg, No_names, No_unique_names, osm_id_array, osm_name_array
+	path, No_seg, No_names, No_unique_names, osm_id_array, osm_name_array,
+	geom_osm_block, geom2_osm_block
 FROM cnefe2010.quadra_array_ruas, OSM_blocks_fullyNamed
 where 	OSM_blocks_fullyNamed.cod_mun = quadra_array_ruas.cod_mun;
 	AND osm_name_semAcento_array = array_nomeC_logradouro;
 
+
+CREATE INDEX OSM_blocks_index ON OSM_blocks USING gist(geom_osm_block);
+
+
 --we find 95160 block matches, located in 1822 municipios. 
 
 -- OBS Next step should  be try a fuzzy match on the street name arrays
+
+
+
 
 
 -------------------------
@@ -184,6 +247,108 @@ where 	OSM_blocks_fullyNamed.cod_mun = quadra_array_ruas.cod_mun;
 -------------------------
 other auxiliary queries, tests, to do list (and maybe some garbage)
 #aux_setor
+
+
+--matched blocks that are also the full ED
+SELECT count(*) 
+FROM  OSM_CNEFE_block_matches
+WHERE idn_setor in 
+	(SELECT idn_setor 
+	 FROM cnefe2010.quadra 
+	 GROUP BY idn_setor
+	 HAVING count(*) = 1)
+
+SELECT cod_mun, count(*) 
+FROM  OSM_CNEFE_block_matches
+WHERE idn_setor in 
+	(SELECT idn_setor 
+	 FROM cnefe2010.quadra 
+	 GROUP BY idn_setor
+	 HAVING count(*) = 1)
+GROUP BY cod_mun
+ORDER BY count(*) desc
+
+--312 mil setores.
+-- Destes 93 mil setores tem um so quarteirao
+-- Dentre estes de um so quarteirao 952 foram pareados com o OSM	 
+-- Eses pareados pertencem a 81 municipios
+
+SELECT	idn_setor, 
+	count(idn_quadra),
+	count(osm_id_array)
+FROM cnefe2010.quadra
+LEFT JOIN OSM_CNEFE_block_matches
+	ON quadra.idn_quadra =  OSM_CNEFE_block_matches.idn_quadra
+GROUP BY idn_setor
+
+
+-- setores com todas as quadras mapeadas
+SELECT cod_mun, count(*)
+FROM
+(SELECT  cod_mun, foo.idn_setor, 
+	N_matched_blocks, N_blocks
+FROM
+       (SELECT cod_mun, idn_setor, 
+	count(osm_id_array) AS N_matched_blocks
+	FROM OSM_CNEFE_block_matches
+	GROUP BY cod_mun, idn_setor ) AS foo
+INNER JOIN 
+       (SELECT idn_setor, count(quadra.idn_quadra) AS N_blocks
+	FROM cnefe2010.quadra
+	GROUP BY idn_setor  
+)  AS baa
+ON foo.idn_setor = baa.idn_setor
+WHERE N_matched_blocks = N_blocks) as bbb
+GROUP BY cod_mun
+ORDER BY count(*) desc
+
+-- 2272 setores tem todas as quadras mapeadas (isso e numero de linhas da subquery bbb, acima). 
+-- que por sua vez pertencem a 207 municipios. 
+
+
+
+-- creating table with EDs that could be matched in the ED shapefile and the agregation of OSM-Blocks. For each we ED e calculate de distance and angle between the ED shapefile and OSM
+
+CREATE TABLE control_points_SC2OSM AS
+SELECT 	cod_mun, idn_setor, cod_setor,
+	setor_censitarioL.geom as geom_SC, 
+	ST_Centroid(setor_censitarioL.geom) AS point_SC, 	
+	ST_Union(geom_osm_block) AS geom_osm_setor, 
+	ST_Centroid(ST_Union(geom_osm_block)) AS point_osm_setor, 
+	ST_Distance(	ST_Centroid(setor_censitarioL.geom),
+			ST_Centroid(ST_Union(geom_osm_block))   ) AS distance_SC2OSM, 
+	ST_Azimuth(	ST_Centroid(setor_censitarioL.geom),
+			ST_Centroid(ST_Union(geom_osm_block))   ) AS angle_SC2OSM, 
+	ST_Distance(    ST_Centroid(ST_Transform(setor_censitarioL.geom,utmzone(ST_Centroid(setor_censitarioL.geom)))),
+			ST_Centroid(ST_Transform(ST_Union(geom_osm_block),utmzone(ST_Centroid(ST_Union(geom_osm_block)))))   ) AS dist_M_SC2OSM							
+FROM   OSM_CNEFE_block_matches
+INNER JOIN setor_censitarioL
+	ON OSM_CNEFE_block_matches.cod_setor = setor_censitarioL.cd_geocodi
+GROUP BY cod_mun, idn_setor, cod_setor, geom_SC
+HAVING  idn_setor IN
+(	SELECT  foo.idn_setor 		
+	FROM
+	       (SELECT cod_mun, idn_setor, 
+		count(osm_id_array) AS N_matched_blocks
+		FROM OSM_CNEFE_block_matches
+		GROUP BY cod_mun, idn_setor ) AS foo
+	INNER JOIN 
+	       (SELECT idn_setor, count(quadra.idn_quadra) AS N_blocks
+		FROM cnefe2010.quadra
+		GROUP BY idn_setor  
+	)  AS baa
+	ON foo.idn_setor = baa.idn_setor
+	WHERE N_matched_blocks = N_blocks 
+)	
+
+-- Visual inspection of theese cases shows that is works great. However some sectors are quite different thatn they should be. I need to add a layer of comparing areas or perimeters and cutting wheen these are too diff
+
+
+
+
+
+
+
 
 #Testes para diferentes filtros. 
 SELECT a.idn_quadra , avg(a.N)
@@ -213,12 +378,9 @@ WHERE 	ST_Intersects(way,UFs_Brasil.geom)
 	AND ST_Intersects(way,municipios_Brasil.geom)
 	AND ST_Intersects(way,ST_Buffer(setor_censitarioL.geom,0.005))=true
 
-CREATE TABLE OSM_Streets_by_SetorCensitario2 AS
-SELECT OSM_Streets_by_Mun.*, setor_censitarioL.geom
-FROM OSM_Streets_by_Mun, setor_censitarioL
-WHERE 	OSM_Streets_by_Mun.cod_UF= substring(setor_censitarioL.cd_geocodi,1,2)  AND
-	OSM_Streets_by_Mun.cod_mun= substring(setor_censitarioL.cd_geocodi,1,7)   AND
-	ST_Intersects(way,ST_Buffer(setor_censitarioL.geom,0.005))=true
+
+
+
 
 
 
@@ -380,6 +542,11 @@ SELECT count(*), count(num_cep) from cnefe2010.endereco
 
 SELECT count(*) from cnefe2010.domicilio 
 #11.3 milhoes  11330041
+
+
+
+
+
 
 
 
