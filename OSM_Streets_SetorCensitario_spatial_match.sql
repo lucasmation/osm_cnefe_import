@@ -48,8 +48,8 @@ ON ST_Intersects(way,geom_buffed);
 "  ->  Index Scan using osm_streets_index on osm_streets  (cost=0.41..47.69 rows=58 width=190)"
 "        Index Cond: (way && setor_censitariol2.geom_buffed)"
 "        Filter: _st_intersects(way, setor_censitariol2.geom_buffed)"
- 
- 
+
+
 --C) Matching with ST_DWithin
 EXPLAIN
 CREATE TABLE OSM_Streets_by_SetorCensitario AS
@@ -95,7 +95,7 @@ ON 	OSM_Streets_by_mun.cod_mun=setor_censitarioL2.cod_mun AND
 
 
 "Nested Loop  (cost=0.41..531970.67 rows=2854485 width=24)"
-"  ->  Seq Scan on setor_censitariol2  (cost=0.00..119821.74 rows=316574 width=1929)"
+"  ->  Seq Scan on setor_censitariol2  (cost=0.00..)"
 "  ->  Index Scan using osm_streets_by_mun_index3 on osm_streets_by_mun  (cost=0.41..1.29 rows=1 width=268)"
 "        Index Cond: (((cod_mun)::text = setor_censitariol2.cod_mun) AND (way && setor_censitariol2.geom_buffed))"
 "        Filter: _st_intersects(way, setor_censitariol2.geom_buffed)"
@@ -136,7 +136,7 @@ CLUSTER 	OSM_Streets_by_Mun using OSM_Streets_by_Mun_index3; -- 743
 --F) 
 
 EXPLAIN
-CREATE TABLE OSM_Streets_by_SetorCensitario AS
+CREATE TABLE OSM_Streets_by_SetorCensitarioA AS
 SELECT osm_id, cd_geocodi as cod_setor
 FROM OSM_Streets_by_mun
 INNER JOIN  setor_censitarioL2
@@ -167,3 +167,36 @@ ON 	OSM_Streets_by_mun.cod_mun=setor_censitarioL2.cod_mun AND
 "  ->  Index Scan using osm_streets_by_mun_index3 on osm_streets_by_mun  (cost=0.41..1.29 rows=1 width=268)"
 "        Index Cond: (((cod_mun)::text = setor_censitariol2.cod_mun) AND (way && st_expand(setor_censitariol2.geom, 0.005::double precision)))"
 "        Filter: ((setor_censitariol2.geom && st_expand(way, 0.005::double precision)) AND _st_dwithin(way, setor_censitariol2.geom, 0.005::double precision))"
+
+
+-- Comparing Results of the Explains
+
+Nested Loop 
+B 15401715.81 rows=597184609 width=24
+C 15439215.66 rows=   185124 width=24 
+D   531970.67 rows=  2854485 width=24
+E   534344.97 rows=      744 width=24
+F   528928.67 rows=  2854485 width=24
+G   531302.97 rows=      744 width=24
+
+Seq Scan 
+B   119821.74 rows=   316574 width=1921
+C    57088.34 rows=   316634 width=2145
+D 0.00..
+E   119821.74 rows=   316574 width=2156
+F    19875.74 rows=   316574 width=1929
+G   119875.74 rows=   316574 width=2156
+
+Index Scan
+B       47.69 rows=       58 width=190
+C       48.57 rows=        1 width=190
+D        1.29 rows=        1 width=268
+E        1.30 rows=        1 width=268
+F        1.28 rows=        1 width=268
+G        1.29 rows=        1 width=268
+     
+-- conclusion. it seems that the Nested Loop  is the most expensive part of the queries, and query G should be the most efficient
+
+
+
+
