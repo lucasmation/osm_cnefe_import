@@ -37,7 +37,7 @@ to be done
 
 This is a difficult problem because CNEFE does not contain geometric features of roads (or city blocks). The most spatially precise geometries that can be attributed to CNEFE are the Enumeration Districts (setores censitarios) areas which can comprize of about 8 blocks). 
 
-However, each address in CNEFE contains a "city block code". Thus, it is possible to aggregate CNEFE into a dataset of city blocks, caracterized by their surounding streets. With some SQL magic, OSM data can also be aggregated into a similar city block datasey with souringing streets for each block. Therefore, as long as street names are the same in the two datasets, OSM and CNEFE city blocks can be matched. 
+However, each address in CNEFE contains a "city block code". Thus, it is possible to aggregate CNEFE into a dataset of city blocks, characterized by their surounding streets. With some SQL magic, OSM data can also be aggregated into a similar city block datasey with souringing streets for each block. Therefore, as long as street names are the same in the two datasets, OSM and CNEFE city blocks can be matched. 
 
 The code at OMS_and_CNEFE_blocks_matching.sql does that
 
