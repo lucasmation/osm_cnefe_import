@@ -1,202 +1,126 @@
-﻿-- Flowing the suggestions at http://stackoverflow.com/questions/32907481/optimize-large-st-intersect-query-match-1-8m-osm-streets-to-317k-polygons 
--- I tryed different aprochages to matching the 1.8 million strets in OSM of Brazil to the 317k Enumeration districts. 
--- (I haven`t actually run the queries yet)
-
-
-
-
-----------------------
--- A, B, C  . Creating spatial Indexes and CLUSTERING ON THEM. Not matching on muncipal codes
- -- A = criating buffer as subquery . B = pre-creating buffer in separate query . C = using ST_DWithin
-
-
--- A) subquery to create buffer
-EXPLAIN
+﻿
+--Mathcing osm_streets to Setor Censitario Polygons. 
+  -- Because Setor Censitario polygons can have some problems, shifted sideways, etc, I used a  0.0005 decimal degrees buffer (+or- 56m) around the polygons
 CREATE TABLE OSM_Streets_by_SetorCensitario AS
 SELECT osm_id, cd_geocodi as cod_setor
-FROM OSM_Streets
-INNER JOIN
-        (SELECT *, ST_Buffer(geom,0.005) as geom_buffed
-        FROM setor_censitarioL) AS foo
-ON ST_Intersects(way,geom_buffed)
+FROM OSM_Streets_by_mun
+INNER JOIN  setor_censitarioL2
+ON 	OSM_Streets_by_mun.cod_mun=setor_censitarioL2.cod_mun AND
+	ST_DWithin(way,geom,0.0005);
+-- runs in 1h36
+
+
+
+---------------------------------------------
+
+
+select* from OSM_Streets_by_SetorCensitario limit 2000    
+
+create table OSM_Streets_by_SetorCensitario AS SELECT * from OSM_Streets_by_SetorCensitarioA
+drop table OSM_Streets_by_SetorCensitarioA
+
+SELECT N, count(*)
+FROM
+	(SELECT osm_id, count(*) as N
+	FROM OSM_Streets_by_SetorCensitario
+	GROUP BY osm_id) AS foo
+GROUP BY N
+ORDER BY count(*) desc
+
+
+
+Re run with smaller buffer. 
+
+
+
+
+
+--Experimenting with different buffers (based on code baed on G) = Matching with municipal code and ST_DWithin
+
+EXPLAIN
+create table OSM_Streets_by_SetorCensitario_005 as select * from OSM_Streets_by_SetorCensitario
+
+
+
+
+
+
+
+select count(*) from OSM_Streets_by_SetorCensitario  -- 5116195
+-- eliminando duplicatas sao                            5044154 
+
+
+
+CREATE TABLE  sectors_by_osm_id AS
+SELECT osm_id, count(*)  AS No_setores, array_agg(cod_setor)
+FROM (	select osm_id , cod_setor , count(*) AS N from OSM_Streets_by_SetorCensitario
+	group by osm_id , cod_setor ) AS foo 
+GROUP BY osm_id
+
+select No_setores, count(*)
+from sectors_by_osm_id  
+group by No_setores
+order by count(*) desc
+
+select * from sectors_by_osm_id    limit 2000-- 5116195
+
+select * from OSM_Streets_by_SetorCensitario   limit 2000-- 5116195
+
  
-"Nested Loop  (cost=0.00..284628404933.70 rows=185124060285 width=24)"
-"  Join Filter: st_intersects(osm_streets.way, st_buffer(setor_censitariol.geom, 0.005::double precision))"
-"  ->  Seq Scan on osm_streets  (cost=0.00..75902.88 rows=1753988 width=190)"
-"  ->  Materialize  (cost=0.00..58671.51 rows=316634 width=2145)"
-"        ->  Seq Scan on setor_censitariol  (cost=0.00..57088.34 rows=316634 width=2145)"
- 
+-- 5.1 million rows, 1h37min. Query returned successfully: 5116195 rows affected, 5822001 ms execution time.
 
---B) pre compiling the buffer and running the main query
-drop table setor_censitarioL2
-CREATE TABLE setor_censitarioL2 AS
-SELECT 	*, substring(cd_geocodi,1,7) AS cod_mun , 
-	ST_Buffer(geom,0.005) as geom_buffed
-FROM setor_censitarioL;
-CREATE INDEX setor_censitarioL2_index2 ON setor_censitarioL2 USING gist  (cod_mun);  
-
- 
-EXPLAIN
-CREATE TABLE OSM_Streets_by_SetorCensitario AS
-SELECT osm_id, cd_geocodi as cod_setor
-FROM OSM_Streets
-INNER JOIN  setor_censitarioL2
-ON ST_Intersects(way,geom_buffed);
-
-"Nested Loop  (cost=0.41..15401715.81 rows=597184609 width=24)"
-"  ->  Seq Scan on setor_censitariol2  (cost=0.00..119821.74 rows=316574 width=1921)"
-"  ->  Index Scan using osm_streets_index on osm_streets  (cost=0.41..47.69 rows=58 width=190)"
-"        Index Cond: (way && setor_censitariol2.geom_buffed)"
-"        Filter: _st_intersects(way, setor_censitariol2.geom_buffed)"
-
-
---C) Matching with ST_DWithin
-EXPLAIN
-CREATE TABLE OSM_Streets_by_SetorCensitario AS
-SELECT osm_id, cd_geocodi as cod_setor
-FROM OSM_Streets
-INNER JOIN  setor_censitarioL
-ON ST_DWithin(way,geom,0.005);
-
-"Nested Loop  (cost=0.41..15439215.66 rows=185124 width=24)"
-"  ->  Seq Scan on setor_censitariol  (cost=0.00..57088.34 rows=316634 width=2145)"
-"  ->  Index Scan using osm_streets_index on osm_streets  (cost=0.41..48.57 rows=1 width=190)"
-"        Index Cond: (way && st_expand(setor_censitariol.geom, 0.005::double precision))"
-"        Filter: ((setor_censitariol.geom && st_expand(way, 0.005::double precision)) AND _st_dwithin(way, setor_censitariol.geom, 0.005::double precision))"
+-- To do latter Even better will be to have the buffer proportional to the distortion found in each street (by matching OSM to CNEFE and selecting fcnefe sectors with all blocks mateched))
 
 
 
--------------------------
--- D, E. The difference now is that I add indexes on cod_mun for both tables and use the cod_mun as a matching criteria. 
---        Note that the CLUSTER is still only on the index of the spatial index
---    D = pre-creating buffer in separate query . E = using ST_DWithin
+
+-- grouping OSM-streets by setor
+select substring(cod_setor,1,7) AS cod_mun, osm_id, count(cod_setor) as N_setores, array_agg(cod_setor)
+FROM OSM_Streets_by_SetorCensitario
+GROUP BY substring(cod_setor,1,7), osm_id
+
+select * from setor_censitarioL2 limit 2000
 
 
--- i.e. I created the index for cod_mun on both tables
-CREATE INDEX 	setor_censitarioL2_index  	ON setor_censitarioL2 USING gist  (geom);
-CREATE INDEX 	setor_censitarioL2_index2 	ON setor_censitarioL2 USING gist  (cod_mun);  
-CLUSTER 	setor_censitarioL2 	using setor_censitarioL2_index2; -- 75s
+drop table temp3
 
 
-CREATE INDEX OSM_Streets_by_Mun_index  	ON OSM_Streets_by_Mun USING gist  (way);
-CREATE INDEX OSM_Streets_by_Mun_index2 ON OSM_Streets_by_Mun USING gist  (cod_mun);
-CLUSTER OSM_Streets_by_Mun using OSM_Streets_by_Mun_index;
+-- agregate CNEFE streets by setor
+CREATE TABLE temp3 AS
+SELECT 	substring(cod_setor,1,7) AS cod_mun, logradouro.idn_logradouro, 
+	tipo_logradouro.dsc_tipo_logradouro, logradouro.dsc_titulo_logradouro, logradouro.nme_logradouro,
+	trim(concat_ws(' ',tipo_logradouro.dsc_tipo_logradouro,logradouro.dsc_titulo_logradouro,logradouro.nme_logradouro)) AS nomeC_logradouro, 
+	array_agg(cod_setor), ST_Union(geom) AS geom
+FROM cnefe2010.setor
+	INNER JOIN setor_censitarioL2 
+	ON substring(setor.cod_setor,1,7) = setor_censitarioL2.cd_geocodm
+	INNER JOIN cnefe2010.quadra 
+		ON cnefe2010.setor.idn_setor = cnefe2010.quadra.idn_setor
+	INNER JOIN cnefe2010.face 
+		ON cnefe2010.quadra.idn_quadra = cnefe2010.face.idn_quadra 
+	INNER JOIN cnefe2010.face_tem_logradouros 
+		ON cnefe2010.face.idn_face = cnefe2010.face_tem_logradouros.idn_face
+	INNER JOIN cnefe2010.logradouro
+		ON cnefe2010.face_tem_logradouros.idn_logradouro=cnefe2010.logradouro.idn_logradouro
+	INNER JOIN cnefe2010.tipo_logradouro
+		ON cnefe2010.logradouro.idn_tipo_logradouro = cnefe2010.tipo_logradouro.idn_tipo_logradouro 
+WHERE substring(cod_setor, 1,7) = '3550308'
+GROUP BY substring(cod_setor,1,7), logradouro.idn_logradouro, 
+	tipo_logradouro.dsc_tipo_logradouro, logradouro.dsc_titulo_logradouro, logradouro.nme_logradouro,
+	nomeC_logradouro 
 
+-- select only streets that are matched to setors that are countigous
 
---D) 
-
-EXPLAIN
-CREATE TABLE OSM_Streets_by_SetorCensitario AS
-SELECT osm_id, cd_geocodi as cod_setor
-FROM OSM_Streets_by_mun
-INNER JOIN  setor_censitarioL2
-ON 	OSM_Streets_by_mun.cod_mun=setor_censitarioL2.cod_mun AND
-	ST_Intersects(way,geom_buffed);
-
-
-"Nested Loop  (cost=0.41..531970.67 rows=2854485 width=24)"
-"  ->  Seq Scan on setor_censitariol2  (cost=0.00..)"
-"  ->  Index Scan using osm_streets_by_mun_index3 on osm_streets_by_mun  (cost=0.41..1.29 rows=1 width=268)"
-"        Index Cond: (((cod_mun)::text = setor_censitariol2.cod_mun) AND (way && setor_censitariol2.geom_buffed))"
-"        Filter: _st_intersects(way, setor_censitariol2.geom_buffed)"
-
-
-
---E) Matching with municipal code and ST_DWithin
-
-EXPLAIN
-CREATE TABLE OSM_Streets_by_SetorCensitario AS
-SELECT osm_id, cd_geocodi as cod_setor
-FROM OSM_Streets_by_mun
-INNER JOIN  setor_censitarioL2
-ON 	OSM_Streets_by_mun.cod_mun=setor_censitarioL2.cod_mun AND
-	ST_DWithin(way,geom,0.005);
-
-"Nested Loop  (cost=0.41..534344.97 rows=744 width=24)"
-"  ->  Seq Scan on setor_censitariol2  (cost=0.00..119821.74 rows=316574 width=2156)"
-"  ->  Index Scan using osm_streets_by_mun_index3 on osm_streets_by_mun  (cost=0.41..1.30 rows=1 width=268)"
-"        Index Cond: (((cod_mun)::text = setor_censitariol2.cod_mun) AND (way && st_expand(setor_censitariol2.geom, 0.005::double precision)))"
-"        Filter: ((setor_censitariol2.geom && st_expand(way, 0.005::double precision)) AND _st_dwithin(way, setor_censitariol2.geom, 0.005::double precision))"
+SELECT ST_GeometryType(geom), count(*) 
+from temp3 
+GROUP BY ST_GeometryType(geom) 
+ORDER BY count(*) desc
 
 
 
--------------------------
--- F, G  Now I create index base on both cod_mun and spatial variable. And cluster both datases on that index
---    F = pre-creating buffer in separate query . G = using ST_DWithin
-
-CREATE INDEX 	setor_censitarioL2_index3 	ON setor_censitarioL2 USING gist  (cod_mun,geom);  --46s
-CLUSTER 	setor_censitarioL2 	using setor_censitarioL2_index3; -- 131s
 
 
-CREATE INDEX 	OSM_Streets_by_Mun_index3 	ON OSM_Streets_by_Mun USING gist  (cod_mun,way);
-CLUSTER 	OSM_Streets_by_Mun using OSM_Streets_by_Mun_index3; -- 743
-
-
-
---F) 
-
-EXPLAIN
-CREATE TABLE OSM_Streets_by_SetorCensitarioA AS
-SELECT osm_id, cd_geocodi as cod_setor
-FROM OSM_Streets_by_mun
-INNER JOIN  setor_censitarioL2
-ON 	OSM_Streets_by_mun.cod_mun=setor_censitarioL2.cod_mun AND
-	ST_Intersects(way,geom_buffed);
-
-
-"Nested Loop  (cost=0.41..528928.67 rows=2854485 width=24)"
-"  ->  Seq Scan on setor_censitariol2  (cost=0.00..119875.74 rows=316574 width=1929)"
-"  ->  Index Scan using osm_streets_by_mun_index3 on osm_streets_by_mun  (cost=0.41..1.28 rows=1 width=268)"
-"        Index Cond: (((cod_mun)::text = setor_censitariol2.cod_mun) AND (way && setor_censitariol2.geom_buffed))"
-"        Filter: _st_intersects(way, setor_censitariol2.geom_buffed)"
-
-
-
---G) Matching with municipal code and ST_DWithin
-
-EXPLAIN
-CREATE TABLE OSM_Streets_by_SetorCensitario AS
-SELECT osm_id, cd_geocodi as cod_setor
-FROM OSM_Streets_by_mun
-INNER JOIN  setor_censitarioL2
-ON 	OSM_Streets_by_mun.cod_mun=setor_censitarioL2.cod_mun AND
-	ST_DWithin(way,geom,0.005);
-
-"Nested Loop  (cost=0.41..531302.97 rows=744 width=24)"
-"  ->  Seq Scan on setor_censitariol2  (cost=0.00..119875.74 rows=316574 width=2156)"
-"  ->  Index Scan using osm_streets_by_mun_index3 on osm_streets_by_mun  (cost=0.41..1.29 rows=1 width=268)"
-"        Index Cond: (((cod_mun)::text = setor_censitariol2.cod_mun) AND (way && st_expand(setor_censitariol2.geom, 0.005::double precision)))"
-"        Filter: ((setor_censitariol2.geom && st_expand(way, 0.005::double precision)) AND _st_dwithin(way, setor_censitariol2.geom, 0.005::double precision))"
-
-
--- Comparing Results of the Explains
-
-Nested Loop 
-B 15401715.81 rows=597184609 width=24
-C 15439215.66 rows=   185124 width=24 
-D   531970.67 rows=  2854485 width=24
-E   534344.97 rows=      744 width=24
-F   528928.67 rows=  2854485 width=24
-G   531302.97 rows=      744 width=24
-
-Seq Scan 
-B   119821.74 rows=   316574 width=1921
-C    57088.34 rows=   316634 width=2145
-D 0.00..
-E   119821.74 rows=   316574 width=2156
-F    19875.74 rows=   316574 width=1929
-G   119875.74 rows=   316574 width=2156
-
-Index Scan
-B       47.69 rows=       58 width=190
-C       48.57 rows=        1 width=190
-D        1.29 rows=        1 width=268
-E        1.30 rows=        1 width=268
-F        1.28 rows=        1 width=268
-G        1.29 rows=        1 width=268
-     
--- conclusion. it seems that the Nested Loop  is the most expensive part of the queries, and query G should be the most efficient
-
+HAVING ST_Union(geom)
 
 
 
